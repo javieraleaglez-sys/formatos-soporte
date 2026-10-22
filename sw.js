@@ -1,5 +1,5 @@
 // Cambia VERSION cada vez que subas cambios, para que los equipos descarguen la versión nueva.
-const VERSION = 'formatos-v2';
+const VERSION = 'formatos-v3';
 const SHELL = [
   './', 'index.html', 'minuta.html', 'prueba.html', 'manifest.webmanifest',
   'vendor/jspdf.umd.min.js', 'vendor/jszip.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/docx.umd.js',
