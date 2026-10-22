@@ -269,8 +269,10 @@ dialog{overflow:auto}
 .ss{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--chrome);color:var(--fg);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(10,20,30,.18);padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px}
 .ss .ss-t{font-weight:700;font-size:14px}
 .ss .ss-name{font:500 12px var(--f-mono);color:var(--muted);overflow-wrap:anywhere}
-.ss .ss-row{display:grid;grid-template-columns:1fr auto;gap:8px}
-.ss .ss-row button{justify-content:center;padding:12px 14px;font-size:14px}
+.ss .ss-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ss .ss-grid button{justify-content:center;padding:12px 10px;font-size:14px}
+.ss .ss-err{font-size:12.5px;color:var(--muted);min-height:1em}
+.ss .ss-err.bad{color:var(--danger)}
 .ss .ss-hint{font-size:12px;color:var(--muted)}
 </style>
 
@@ -962,17 +964,20 @@ async function readDocxState(f){
 function mimeOf(n){return /\.pdf$/i.test(n)?'application/pdf':/\.docx$/i.test(n)?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/json';}
 function plainDownload(blob,filename){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);}
 function showShare(file){
-  const el=$('#shareSheet');el.querySelector('.ss-name').textContent=file.name;el.hidden=false;
-  $('#ssShare').onclick=async()=>{try{await navigator.share({files:[file],title:file.name});el.hidden=true;say('Listo: '+file.name,'ok');}catch(e){if(e&&e.name==='AbortError')return;say('El teléfono no dejó compartir este archivo. Usa «Descargar» y súbelo desde la app de OneDrive.','err');}};
-  $('#ssDl').onclick=()=>{plainDownload(file,file.name);el.hidden=true;say('Archivo descargado: '+file.name,'ok');};
+  const el=$('#shareSheet'),err=$('#ssErr');el.querySelector('.ss-name').textContent=file.name;err.textContent='';err.classList.remove('bad');el.hidden=false;
+  let can=false;try{can=!!(navigator.canShare&&navigator.canShare({files:[file]}));}catch(e){}
+  $('#ssShare').hidden=!can;
+  const fail=(what,e)=>{err.classList.add('bad');err.textContent=what+' no funcionó en este teléfono'+(e?' ('+(e.name||'')+(e.message?': '+e.message:'')+')':'')+'. Prueba otra opción.';};
+  $('#ssShare').onclick=async()=>{err.textContent='';err.classList.remove('bad');try{await navigator.share({files:[file]});el.hidden=true;say('Enviado: '+file.name+'. Revisa que haya llegado a la carpeta de OneDrive que elegiste.','ok');}catch(e){if(e&&e.name==='AbortError')return;fail('Compartir',e);}};
+  $('#ssDl').onclick=()=>{err.textContent='';err.classList.remove('bad');try{plainDownload(file,file.name);err.textContent='Descarga iniciada. Revisa la notificación de descarga o la carpeta Descargas.';}catch(e){fail('Descargar',e);}};
+  $('#ssDl2').onclick=()=>{err.textContent='';err.classList.remove('bad');const fr=new FileReader();fr.onload=()=>{try{const a=document.createElement('a');a.href=fr.result;a.download=file.name;a.rel='noopener';document.body.append(a);a.click();a.remove();err.textContent='Descarga iniciada (otra forma). Revisa la carpeta Descargas.';}catch(e){fail('Descargar (otra forma)',e);}};fr.onerror=()=>fail('Descargar (otra forma)',fr.error);fr.readAsDataURL(file);};
+  $('#ssOpen').onclick=()=>{err.textContent='';err.classList.remove('bad');try{const u=URL.createObjectURL(file);const w=window.open(u,'_blank');if(!w){location.href=u;}err.textContent='Se abrió el archivo. Desde ahí usa el menú ⋮ › Descargar o Compartir.';setTimeout(()=>URL.revokeObjectURL(u),60000);}catch(e){fail('Abrir archivo',e);}};
   $('#ssClose').onclick=()=>{el.hidden=true;};
 }
 async function offer(filename,data){
-  if(!saveHandle&&!dl&&navigator.canShare&&matchMedia('(pointer:coarse)').matches){
+  if(!saveHandle&&!dl&&matchMedia('(pointer:coarse)').matches){
     const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const file=new File([blob],filename,{type:mimeOf(filename)});
-    let ok=false;try{ok=navigator.canShare({files:[file]});}catch(e){}
-    if(ok){showShare(file);say('Archivo listo. Elige dónde guardarlo.','ok');return;}
-    plainDownload(blob,filename);say('Archivo descargado en Descargas: '+filename+'. Desde ahí puedes subirlo con la app de OneDrive.','ok');return;
+    showShare(file);say('Archivo listo. Elige cómo guardarlo.','ok');return;
   }
   if(saveHandle){const h=saveHandle;saveHandle=null;try{const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const w=await h.createWritable();await w.write(blob);await w.close();say('Guardado en tu carpeta: '+h.name,'ok');}catch(e){say('No se pudo guardar el archivo en esa carpeta. Inténtalo de nuevo.','err');}return;}
   if(!dl){try{const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);say('Archivo descargado: '+filename,'ok');}catch(e){say('No se pudo descargar el archivo.','err');}return;}
@@ -1270,8 +1275,14 @@ if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.ser
 <div id="shareSheet" class="ss" role="dialog" aria-label="Guardar archivo" hidden>
   <div class="ss-t">Tu archivo está listo</div>
   <div class="ss-name"></div>
-  <div class="ss-row"><button type="button" id="ssShare" class="primary">Guardar en OneDrive / Archivos…</button><button type="button" id="ssDl">Descargar</button></div>
-  <div class="ss-hint">En el menú que se abre elige <b>OneDrive</b> (o «Guardar en Archivos» › OneDrive en iPhone) y la carpeta donde lo quieres.</div>
+  <div class="ss-grid">
+    <button type="button" id="ssShare" class="primary">Compartir · OneDrive…</button>
+    <button type="button" id="ssDl">Descargar</button>
+    <button type="button" id="ssDl2">Descargar (otra forma)</button>
+    <button type="button" id="ssOpen">Abrir archivo</button>
+  </div>
+  <div class="ss-hint">Si «Compartir» no lo guarda en OneDrive, usa «Descargar» y luego en la app de OneDrive pulsa <b>+ › Subir</b> y elige el archivo en Descargas.</div>
+  <div class="ss-err" id="ssErr" role="status"></div>
   <button type="button" id="ssClose" class="ghost" style="justify-self:end">Cerrar</button>
 </div>
 </body>
