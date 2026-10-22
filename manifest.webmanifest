@@ -1,0 +1,16 @@
+{
+  "name": "Formatos de Soporte Técnico",
+  "short_name": "Formatos ST",
+  "description": "Minuta FOR-ASC-14-00-03 y Prueba a pie de máquina FOR-DID-01-03-03 con evidencia fotográfica y exportación a Word o PDF.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e9edf1",
+  "theme_color": "#0a8fc4",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
