@@ -273,7 +273,7 @@ dialog{overflow:auto}
     <a class="btn" href="./" title="Volver a la lista de formatos">← Formatos</a>
     <h1>Prueba a pie de máquina<small>FOR-DID-01-03-03 · DISEÑO Y DESARROLLO</small></h1>
     <span id="newWrap"><button id="btnNew" type="button">Nueva prueba</button></span>
-    <label class="btn" for="fileOpen">Abrir prueba<input id="fileOpen" class="vh" type="file" accept=".json,application/json"></label>
+    <label class="btn" for="fileOpen">Abrir prueba<input id="fileOpen" class="vh" type="file" accept=".json,.docx,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
     <button id="btnSave" type="button">Guardar prueba<span class="ext">&nbsp;(.json)</span></button>
     <button id="btnDocx" type="button" class="primary">Exportar Word</button>
     <button id="btnPdf" type="button" class="primary">Exportar PDF</button>
@@ -401,6 +401,7 @@ dialog{overflow:auto}
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <script src="vendor/docx.umd.js"></script>
 <script>
 (function(){
@@ -911,13 +912,62 @@ let dl=null;
 (async()=>{try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;}catch(e){dl=null;}
   })();
 function fname(ext){const t=((S.diseno||S.cliente||"")||'prueba').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\s-]/g,'').trim().slice(0,40).replace(/\s+/g,'_')||'prueba';return `${CLAVE}_${S.fecha||'sin-fecha'}_${t}.${ext}`;}
+/* ---------- guardar en la carpeta que elija el usuario ---------- */
+let saveHandle=null;
+const TYPES={pdf:{description:'Documento PDF',accept:{'application/pdf':['.pdf']}},docx:{description:'Documento de Word',accept:{'application/vnd.openxmlformats-officedocument.wordprocessingml.document':['.docx']}},json:{description:'Formato guardado',accept:{'application/json':['.json']}}};
+async function pickTarget(ext){
+  saveHandle=null;
+  if(!window.showSaveFilePicker)return true;
+  try{saveHandle=await window.showSaveFilePicker({suggestedName:fname(ext),id:'formatos-export',startIn:'documents',types:[TYPES[ext]]});return true;}
+  catch(e){if(e&&e.name==='AbortError'){say('Exportación cancelada.');return false;}saveHandle=null;return true;}
+}
+/* ---------- datos de la app dentro del Word, para poder reabrirlo ---------- */
+function stateJSON(){return JSON.stringify(Object.assign({},S,{formato:CLAVE,version:1}));}
+async function embedState(blob){
+  if(!window.JSZip)return blob;
+  try{
+    const z=await JSZip.loadAsync(blob);
+    const b64=btoa(unescape(encodeURIComponent(stateJSON())));
+    z.file('customXml/item1.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><formato xmlns="urn:flexigrip:formatos:v1">'+b64+'</formato>');
+    z.file('customXml/itemProps1.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><ds:datastoreItem ds:itemID="{6C3C8BC8-F283-45AE-878A-BAB7291924A1}" xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml"><ds:schemaRefs><ds:schemaRef ds:uri="urn:flexigrip:formatos:v1"/></ds:schemaRefs></ds:datastoreItem>');
+    z.file('customXml/_rels/item1.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps" Target="itemProps1.xml"/></Relationships>');
+    let ct=await z.file('[Content_Types].xml').async('string');
+    if(!/Extension="xml"/.test(ct))ct=ct.replace('</Types>','<Default Extension="xml" ContentType="application/xml"/></Types>');
+    if(!ct.includes('/customXml/itemProps1.xml'))ct=ct.replace('</Types>','<Override PartName="/customXml/itemProps1.xml" ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/></Types>');
+    z.file('[Content_Types].xml',ct);
+    let rels=await z.file('word/_rels/document.xml.rels').async('string');
+    if(!rels.includes('customXml/item1.xml'))rels=rels.replace('</Relationships>','<Relationship Id="rIdFormatoDatos" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml" Target="../customXml/item1.xml"/></Relationships>');
+    z.file('word/_rels/document.xml.rels',rels);
+    return await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+  }catch(e){console.error(e);return blob;}
+}
+async function readDocxState(f){
+  const z=await JSZip.loadAsync(f);
+  for(const n of Object.keys(z.files)){
+    if(!/^customXml\/item\d+\.xml$/i.test(n))continue;
+    const x=await z.file(n).async('string');
+    const m=x.match(/<formato xmlns="urn:flexigrip:formatos:v1">([A-Za-z0-9+\/=\s]+)<\/formato>/);
+    if(m)return decodeURIComponent(escape(atob(m[1].replace(/\s+/g,''))));
+  }
+  return null;
+}
 async function offer(filename,data){
+  if(saveHandle){const h=saveHandle;saveHandle=null;try{const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const w=await h.createWritable();await w.write(blob);await w.close();say('Guardado en tu carpeta: '+h.name,'ok');}catch(e){say('No se pudo guardar el archivo en esa carpeta. Inténtalo de nuevo.','err');}return;}
   if(!dl){try{const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);say('Archivo descargado: '+filename,'ok');}catch(e){say('No se pudo descargar el archivo.','err');}return;}
   try{await dl.save({filename,data});say('Archivo listo: '+filename,'ok');}
   catch(e){const c=e&&e.code;say(c==='declined'?'Descarga cancelada.':c==='rate_limited'?'Ya hay una descarga pendiente; confírmala o espera un momento.':'No se pudo descargar ('+(c||'error')+').','err');}
 }
-$('#btnSave').onclick=()=>{S.resumen=cleanHTML();S.acuerdos=acu.innerHTML;offer(fname('json'),JSON.stringify(Object.assign({formato:CLAVE,version:1},S)));};
-$('#fileOpen').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const fr=new FileReader();fr.onload=()=>{try{const d=JSON.parse(fr.result);if(!d||!Array.isArray(d.participantes))throw 0;S=Object.assign(blank(),d,{ejemplo:false});renderAll();touch();say('Prueba abierta: '+f.name,'ok');}catch(err){say('Ese archivo no es una prueba guardada con esta aplicación (.json).','err');}};fr.readAsText(f);};
+$('#btnSave').onclick=async()=>{if(!await pickTarget('json'))return;S.resumen=cleanHTML();S.acuerdos=acu.innerHTML;offer(fname('json'),stateJSON());};
+$('#fileOpen').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{let txt;
+    if(/\.docx$/i.test(f.name)){txt=await readDocxState(f);if(txt===null){say('Ese Word no trae los datos de la app. Solo se pueden abrir para editar los Word exportados con esta aplicación.','err');return;}}
+    else if(/\.doc$/i.test(f.name)){say('Los archivos .doc antiguos no se pueden abrir aquí. Usa un Word (.docx) exportado con esta aplicación o el archivo .json.','err');return;}
+    else txt=await f.text();
+    const d=JSON.parse(txt);
+    if(d&&d.formato&&d.formato!==CLAVE){say('Ese archivo es del formato '+d.formato+'. Ábrelo desde ese formato en la portada.','err');return;}
+    if(!d||!Array.isArray(d.participantes))throw 0;
+    S=Object.assign(blank(),d,{ejemplo:false});delete S.formato;delete S.version;renderAll();touch();say('Abierto para editar: '+f.name,'ok');
+  }catch(err){say('No se pudo abrir ese archivo. Usa un .json o un Word exportado con esta aplicación.','err');}};
 
 /* ---------- lectura del resumen en bloques ---------- */
 function blocksOf(root){
@@ -948,6 +998,7 @@ function fmtDate(d){if(!d)return '';const[y,m,da]=d.split('-');return `${da}/${m
 /* ---------- PDF ---------- */
 function imgSize(src){return new Promise(r=>{const i=new Image();i.onload=()=>r([i.naturalWidth,i.naturalHeight]);i.onerror=()=>r([300,100]);i.src=src;});}
 $('#btnPdf').onclick=async()=>{
+  if(!await pickTarget('pdf'))return;
   const b=$('#btnPdf');b.disabled=true;say('Generando PDF…');
   try{
     const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'letter'});
@@ -1086,6 +1137,7 @@ async function boardImages(){
 /* ---------- Word ---------- */
 function bytes(dataUrl){const b=atob(dataUrl.split(',')[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
 $('#btnDocx').onclick=async()=>{
+  if(!await pickTarget('docx'))return;
   const btn=$('#btnDocx');btn.disabled=true;say('Generando Word…');
   try{
     const D=window.docx;if(!D)throw new Error('docx');
@@ -1178,7 +1230,7 @@ $('#btnDocx').onclick=async()=>{
     });
     const doc=new Document({creator:'Prueba a pie de máquina FOR-DID-01-03-03',title:'Prueba a pie de máquina - '+((S.diseno||S.cliente||"")||''),styles:{default:{document:{run:{font:FONT,size:19}}}},
       sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:2300,bottom:900,left:850,right:850,header:500}}},headers:{default:header},children:body}]});
-    const blob=await Packer.toBlob(doc);await offer(fname('docx'),blob);
+    const blob=await embedState(await Packer.toBlob(doc));await offer(fname('docx'),blob);
   }catch(e){console.error(e);say('No se pudo generar el archivo de Word. Inténtalo de nuevo; si persiste, usa «Exportar PDF».','err');}
   finally{btn.disabled=false;}
 };

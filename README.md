@@ -12,6 +12,8 @@ No usa base de datos ni servidor propio. Cada persona trabaja en su navegador:
 - **Borrador automático:** se guarda en el dispositivo (IndexedDB). No se sube a ningún lado.
 - **Guardar / Abrir (.json):** sirve para pasar un formato a otro equipo o a otra persona.
 - **Exportar Word / PDF:** el Word sale en .docx y el PDF con el encabezado del formato en cada hoja (Minuta en A4, Prueba en carta).
+- **Elegir carpeta:** en Chrome y Edge de computadora, al exportar o guardar se abre «Guardar como» para elegir carpeta y nombre (recuerda la última carpeta). En teléfonos, Safari y Firefox el archivo va a Descargas.
+- **Reabrir un Word para modificarlo:** cada Word exportado lleva dentro los datos del formato. Con «Abrir» se carga de nuevo en la app para editarlo y volver a exportarlo. Los cambios hechos directamente en Word no se pasan a la app.
 - **Funciona sin conexión** después de la primera visita, y se puede **instalar** como app en Android, iPhone y PC.
 
 ## Publicar en GitHub Pages
@@ -36,7 +38,7 @@ minuta.html           Minuta FOR-ASC-14-00-03
 prueba.html           Pruebas a pie de máquina FOR-DID-01-03-03
 manifest.webmanifest  Datos para instalarla como app
 sw.js                 Funcionamiento sin conexión
-vendor/               Librerías para generar PDF (jsPDF, autotable) y Word (docx)
+vendor/               Librerías para generar PDF (jsPDF, autotable) y Word (docx, JSZip)
 icons/                Íconos de la app
 .nojekyll             Indica a GitHub que publique los archivos tal cual
 ```

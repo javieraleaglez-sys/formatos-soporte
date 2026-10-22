@@ -1,8 +1,8 @@
 // Cambia VERSION cada vez que subas cambios, para que los equipos descarguen la versión nueva.
-const VERSION = 'formatos-v1';
+const VERSION = 'formatos-v2';
 const SHELL = [
   './', 'index.html', 'minuta.html', 'prueba.html', 'manifest.webmanifest',
-  'vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/docx.umd.js',
+  'vendor/jspdf.umd.min.js', 'vendor/jszip.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/docx.umd.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'
 ];
 
