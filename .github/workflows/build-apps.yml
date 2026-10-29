@@ -27,8 +27,20 @@ jobs:
       - name: Icono de la app
         continue-on-error: true
         run: |
-          mkdir -p assets && cp www/icons/icon-512.png assets/icon-only.png && cp www/icons/icon-512.png assets/icon-foreground.png
-          npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#ffffff'
+          mkdir -p assets
+          cp www/icons/icon-512.png assets/icon-only.png
+          cp www/icons/icon-maskable-512.png assets/icon-foreground.png
+          convert -size 1024x1024 xc:white assets/icon-background.png
+          npx --yes @capacitor/assets@3.0.5 generate --android
+      - name: Revisar ícono adaptable
+        shell: bash
+        run: |
+          R=android/app/src/main/res
+          if ! ls $R/mipmap-*/ic_launcher_background.* >/dev/null 2>&1 && ! ls $R/drawable*/ic_launcher_background.* >/dev/null 2>&1 && ! grep -rqs 'name="ic_launcher_background"' $R/values; then
+            echo "Falta el fondo del ícono adaptable; se usa el ícono normal."
+            rm -f $R/mipmap-anydpi-v26/ic_launcher.xml $R/mipmap-anydpi-v26/ic_launcher_round.xml
+          fi
+          grep -rl "mipmap/ic_launcher_background" $R/mipmap-anydpi-v26 2>/dev/null | while read f; do ls $R/mipmap-*/ic_launcher_background.png >/dev/null 2>&1 || rm -f "$f"; done
       - run: npx cap sync android
       - name: Compilar APK
         working-directory: app/android
