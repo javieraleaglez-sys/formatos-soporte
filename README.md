@@ -1,34 +1,50 @@
-# Formatos de Soporte Técnico
+# Formatos de Soporte Técnico — apps para PC y teléfono
 
-Aplicación web estática con dos formatos controlados:
+Apps que funcionan **sin internet** para llenar, guardar y exportar dos formatos controlados:
 
-| Formato | Clave | Página |
+| Formato | Clave |
+|---|---|
+| Minuta de reunión | FOR-ASC-14-00-03 |
+| Pruebas a pie de máquina | FOR-DID-01-03-03 |
+
+| App | Archivo | Cómo se guarda |
 |---|---|---|
-| Minuta de reunión | FOR-ASC-14-00-03 | `minuta.html` |
-| Pruebas a pie de máquina | FOR-DID-01-03-03 | `prueba.html` |
+| Windows | `Formatos-Soporte-Portable-1.0.0.exe` (no requiere instalar) o `Formatos-Soporte-Instalador-1.0.0.exe` | Ventana «Guardar como»: eliges carpeta, incluida tu carpeta de OneDrive sincronizada |
+| Android | `Formatos-Soporte-Android.apk` | Se guarda en **Documentos › Formatos Soporte** del teléfono; el botón «Enviar» lo manda a OneDrive, correo o WhatsApp (Word, PDF o .json) |
 
-No usa base de datos ni servidor propio. Cada persona trabaja en su navegador:
+En ambas apps:
 
-- **Borrador automático:** se guarda en el dispositivo (IndexedDB). No se sube a ningún lado.
+- **Borrador automático:** se guarda en el equipo. No se sube a ningún lado.
 - **Guardar / Abrir (.json):** sirve para pasar un formato a otro equipo o a otra persona.
 - **Exportar Word / PDF:** el Word sale en .docx y el PDF con el encabezado del formato en cada hoja (Minuta en A4, Prueba en carta).
-- **Elegir carpeta:** en Chrome y Edge de computadora, al exportar o guardar se abre «Guardar como» para elegir carpeta y nombre (recuerda la última carpeta). En el teléfono aparece un panel con cuatro opciones: «Compartir · OneDrive…» (menú de compartir del teléfono, solo para los tipos de archivo que el teléfono permite), «Descargar», «Descargar (otra forma)» y «Abrir archivo». Si una falla, el panel muestra el error y se puede usar otra; lo descargado se sube a OneDrive con la app de OneDrive (+ › Subir).
 - **Reabrir un Word para modificarlo:** cada Word exportado lleva dentro los datos del formato. Con «Abrir» se carga de nuevo en la app para editarlo y volver a exportarlo. Los cambios hechos directamente en Word no se pasan a la app.
-- **Funciona sin conexión** después de la primera visita, y se puede **instalar** como app en Android, iPhone y PC.
 
-## Publicar en GitHub Pages
+## Para qué sirve este repositorio
 
-1. En GitHub, crea un repositorio nuevo, por ejemplo `formatos-soporte`.
-2. Pulsa **Add file › Upload files** y arrastra **todo el contenido** de esta carpeta, incluidas las carpetas `vendor` e `icons`, y el archivo `.nojekyll`. Confirma con **Commit changes**.
-3. Ve a **Settings › Pages**. En *Build and deployment*, elige **Deploy from a branch**, rama **main**, carpeta **/ (root)**, y pulsa **Save**.
-4. En uno o dos minutos la app queda en `https://TU-USUARIO.github.io/formatos-soporte/`. Comparte ese enlace con tu equipo.
+GitHub ya no publica la app como página web. El repositorio solo guarda el código y **genera las apps** con GitHub Actions. Por eso puede ser **privado**: Actions funciona igual en repositorios privados.
 
-> **Importante:** con una cuenta gratuita, GitHub Pages solo publica repositorios **públicos**. Cualquiera con el enlace puede abrir la app, pero no ve los datos de nadie, porque cada borrador se queda en el dispositivo de quien lo llena. No subas al repositorio formatos llenos ni archivos .json con información de clientes.
+## Generar las apps
 
-## Actualizar la app
+1. Sube al repositorio todo el contenido de esta carpeta, incluidas `app`, `vendor`, `icons`, `fonts` y el archivo `.github/workflows/build-apps.yml`. Si la carpeta `.github` no se sube al arrastrar, créala con **Add file › Create new file**, escribiendo como nombre `.github/workflows/build-apps.yml`, y pega su contenido.
+2. Entra a la pestaña **Actions**, elige **Generar apps** y pulsa **Run workflow**. Tarda de 5 a 10 minutos.
+3. Al terminar, abre la ejecución y, en **Artifacts**, descarga **Formatos-Soporte-Android** y **Formatos-Soporte-Windows**.
+4. Cada vez que subas cambios a la rama main, las apps se vuelven a generar solas.
 
-1. Sube los archivos modificados al repositorio.
-2. En `sw.js`, cambia `VERSION` (por ejemplo `formatos-v2`) y súbelo también, para que los equipos que ya la tienen instalada descarguen la versión nueva.
+## Instalar en Android
+
+1. Pasa el archivo `.apk` al teléfono (por OneDrive, correo o cable) y ábrelo.
+2. Si Android lo pide, permite **instalar apps de origen desconocido** para la app con la que lo abriste.
+3. La app aparece como **Formatos Soporte**. Desde ahí todo funciona sin internet.
+
+## Instalar en Windows
+
+- **Portable:** guarda el `.exe` en cualquier carpeta y ábrelo con doble clic.
+- **Instalador:** ejecútalo; crea un acceso directo en el escritorio.
+- Como la app no está firmada digitalmente, Windows puede mostrar «Windows protegió su PC». Pulsa **Más información › Ejecutar de todas formas**.
+
+## Borradores
+
+Cada app guarda su propio borrador automático en ese equipo. Para pasar un formato entre la PC y el teléfono, usa el Word exportado (se puede reabrir con «Abrir») o el archivo .json.
 
 ## Archivos
 
@@ -36,9 +52,11 @@ No usa base de datos ni servidor propio. Cada persona trabaja en su navegador:
 index.html            Portada para elegir el formato
 minuta.html           Minuta FOR-ASC-14-00-03
 prueba.html           Pruebas a pie de máquina FOR-DID-01-03-03
-manifest.webmanifest  Datos para instalarla como app
-sw.js                 Funcionamiento sin conexión
 vendor/               Librerías para generar PDF (jsPDF, autotable) y Word (docx, JSZip)
 icons/                Íconos de la app
-.nojekyll             Indica a GitHub que publique los archivos tal cual
+fonts/                Tipografías incluidas (no se descargan de internet)
+app/                  Proyecto de las apps de Windows (Electron) y Android (Capacitor)
+.github/workflows/    Generación automática de las apps en GitHub
+manifest.webmanifest  Restos de la versión web; se pueden dejar
+sw.js                 Restos de la versión web; se pueden dejar
 ```

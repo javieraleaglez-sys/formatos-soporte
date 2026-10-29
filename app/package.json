@@ -1,0 +1,35 @@
+{
+  "name": "formatos-soporte",
+  "productName": "Formatos Soporte",
+  "version": "1.0.0",
+  "description": "Minuta FOR-ASC-14-00-03 y Prueba a pie de máquina FOR-DID-01-03-03, sin conexión",
+  "author": "Soporte Técnico Flexigrip",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "prepare-web": "node prepare.js",
+    "start": "node prepare.js && electron .",
+    "build:win": "node prepare.js && electron-builder --win nsis portable --x64",
+    "build:android": "node prepare.js && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/core": "6.1.2",
+    "@capacitor/filesystem": "6.0.1",
+    "@capacitor/share": "6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.1.2",
+    "electron": "30.5.1",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "com.flexigrip.formatossoporte",
+    "productName": "Formatos Soporte",
+    "directories": { "output": "dist" },
+    "files": ["electron/**", "www/**", "package.json"],
+    "win": { "icon": "www/icons/icon-512.png", "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "createDesktopShortcut": true, "shortcutName": "Formatos Soporte", "artifactName": "Formatos-Soporte-Instalador-${version}.exe" },
+    "portable": { "artifactName": "Formatos-Soporte-Portable-${version}.exe" }
+  }
+}

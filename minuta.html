@@ -9,8 +9,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Minuta FOR-ASC-14-00-03</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 body{margin:0;font-size:14px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -866,11 +865,28 @@ let dl=null;
 (async()=>{try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;}catch(e){dl=null;}
   })();
 function fname(ext){const t=(S.tema||'minuta').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\s-]/g,'').trim().slice(0,40).replace(/\s+/g,'_')||'minuta';return `${CLAVE}_${S.fecha||'sin-fecha'}_${t}.${ext}`;}
+/* ---------- app instalada en Android (Capacitor): guardar sin internet ---------- */
+const isNative=()=>!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+function blobToB64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=()=>rej(fr.error);fr.readAsDataURL(blob);});}
+async function nativeSave(filename,blob){
+  const P=window.Capacitor.Plugins,FS=P.Filesystem,SH=P.Share;const data=await blobToB64(blob);
+  let uri=null,where='';
+  try{const r=await FS.writeFile({path:'Formatos Soporte/'+filename,data,directory:'DOCUMENTS',recursive:true});uri=r.uri;where='Documentos › Formatos Soporte';}
+  catch(e){try{const r=await FS.writeFile({path:'exportados/'+filename,data,directory:'CACHE',recursive:true});uri=r.uri;where='';}catch(e2){say('No se pudo guardar el archivo en el teléfono ('+(e2&&e2.message||e2)+').','err');return;}}
+  const el=$('#nativeSheet');$('#nsName').textContent=filename;$('#nsErr').textContent='';
+  $('#nsTitle').textContent=where?'Guardado en el teléfono':'Archivo listo para enviar';
+  $('#nsWhere').textContent=where?('Carpeta: '+where+'. Puedes abrirlo desde la app Archivos. Para subirlo a OneDrive o mandarlo por correo, usa «Enviar».'):'Usa «Enviar» para guardarlo en OneDrive o mandarlo por correo.';
+  el.hidden=false;
+  $('#nsShare').onclick=async()=>{try{await SH.share({title:filename,files:[uri],dialogTitle:'Enviar '+filename});}catch(e){if(/cancel/i.test(e&&e.message||''))return;$('#nsErr').textContent='No se pudo abrir el menú para enviar ('+(e&&e.message||e)+').';}};
+  $('#nsClose').onclick=()=>{el.hidden=true;};
+  say(where?('Guardado en '+where+': '+filename):'Archivo listo: '+filename,'ok');
+}
 /* ---------- guardar en la carpeta que elija el usuario ---------- */
 let saveHandle=null;
 const TYPES={pdf:{description:'Documento PDF',accept:{'application/pdf':['.pdf']}},docx:{description:'Documento de Word',accept:{'application/vnd.openxmlformats-officedocument.wordprocessingml.document':['.docx']}},json:{description:'Formato guardado',accept:{'application/json':['.json']}}};
 async function pickTarget(ext){
   saveHandle=null;
+  if(isNative())return true;
   if(!window.showSaveFilePicker||(matchMedia('(pointer:coarse)').matches&&navigator.canShare))return true;
   try{saveHandle=await window.showSaveFilePicker({suggestedName:fname(ext),id:'formatos-export',startIn:'documents',types:[TYPES[ext]]});return true;}
   catch(e){if(e&&e.name==='AbortError'){say('Exportación cancelada.');return false;}saveHandle=null;return true;}
@@ -919,6 +935,7 @@ function showShare(file){
   $('#ssClose').onclick=()=>{el.hidden=true;};
 }
 async function offer(filename,data){
+  if(isNative()){const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});await nativeSave(filename,blob);return;}
   if(!saveHandle&&!dl&&matchMedia('(pointer:coarse)').matches){
     const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});const file=new File([blob],filename,{type:mimeOf(filename)});
     showShare(file);say('Archivo listo. Elige cómo guardarlo.','ok');return;
@@ -1211,7 +1228,7 @@ idbGet(KEY).then(v=>{if(v&&v.participantes){S=v;renderAll();$('#exampleNote').hi
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('formatos-flexigrip',1);r.onupgradeneeded=()=>r.result.createObjectStore('borradores');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 function idbGet(k){return idbOpen().then(db=>new Promise((res,rej)=>{const t=db.transaction('borradores').objectStore('borradores').get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error);}));}
 function idbSet(k,v){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction('borradores','readwrite');tx.objectStore('borradores').put(JSON.parse(JSON.stringify(v)),k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);}));}
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!window.Capacitor&&!/Electron/.test(navigator.userAgent))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 
 
@@ -1227,6 +1244,13 @@ if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.ser
   <div class="ss-hint">Si «Compartir» no lo guarda en OneDrive, usa «Descargar» y luego en la app de OneDrive pulsa <b>+ › Subir</b> y elige el archivo en Descargas.</div>
   <div class="ss-err" id="ssErr" role="status"></div>
   <button type="button" id="ssClose" class="ghost" style="justify-self:end">Cerrar</button>
+</div>
+<div id="nativeSheet" class="ss" role="dialog" aria-label="Archivo guardado" hidden>
+  <div class="ss-t" id="nsTitle">Guardado en el teléfono</div>
+  <div class="ss-name" id="nsName"></div>
+  <div class="ss-hint" id="nsWhere"></div>
+  <div class="ss-grid"><button type="button" id="nsShare" class="primary">Enviar a OneDrive, correo…</button><button type="button" id="nsClose">Listo</button></div>
+  <div class="ss-err" id="nsErr" role="status"></div>
 </div>
 </body>
 </html>

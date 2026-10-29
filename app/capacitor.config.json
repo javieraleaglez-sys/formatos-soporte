@@ -1,0 +1,6 @@
+{
+  "appId": "com.flexigrip.formatossoporte",
+  "appName": "Formatos Soporte",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

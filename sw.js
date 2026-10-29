@@ -1,9 +1,9 @@
 // Cambia VERSION cada vez que subas cambios, para que los equipos descarguen la versión nueva.
-const VERSION = 'formatos-v4';
+const VERSION = 'formatos-v5';
 const SHELL = [
   './', 'index.html', 'minuta.html', 'prueba.html', 'manifest.webmanifest',
   'vendor/jspdf.umd.min.js', 'vendor/jszip.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/docx.umd.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'
+  'icons/icon-192.png', 'fonts/archivo-latin-400-italic.woff2', 'fonts/archivo-latin-400-normal.woff2', 'fonts/archivo-latin-500-normal.woff2', 'fonts/archivo-latin-600-normal.woff2', 'fonts/archivo-latin-700-italic.woff2', 'fonts/archivo-latin-700-normal.woff2', 'fonts/archivo-latin-800-normal.woff2', 'fonts/fonts.css', 'fonts/ibm-plex-mono-latin-400-normal.woff2', 'fonts/ibm-plex-mono-latin-500-normal.woff2', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', e => {
