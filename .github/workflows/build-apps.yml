@@ -40,9 +40,9 @@ jobs:
           code=$?
           tail -n 80 build.log
           if [ $code -ne 0 ]; then
-            grep -nE "What went wrong|error:|Error:|FAILURE|Could not|> " build.log | head -n 25 | while IFS= read -r l; do echo "::error title=Gradle::${l//%/%25}"; done
-            awk '/What went wrong/{f=1} f{print; n++} n>15{exit}' build.log | tr '\n' ' ' | sed 's/^/::error title=Detalle::/'
+            awk '/What went wrong/{f=1} f{print; n++} n>12{exit}' build.log | tr '\n' ' ' | cut -c1-3000 | sed 's/^/::error title=Detalle::/'
             echo
+            grep -nE "error:|ERROR:|e: |Exception|FAILED|AAPT|resource .* not found|Duplicate" build.log | grep -v "^.*> Task" | head -n 7 | while IFS= read -r l; do echo "::error title=Gradle::${l//%/%25}"; done
           fi
           exit $code
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk Formatos-Soporte-Android.apk
