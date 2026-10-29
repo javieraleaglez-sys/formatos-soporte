@@ -74,3 +74,19 @@ jobs:
         env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
       - uses: actions/upload-artifact@v4
         with: { name: Formatos-Soporte-Windows, path: app/dist/*.exe }
+
+  release:
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out }
+      - name: Publicar en Releases
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          ls -R out
+          gh release delete apps --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create apps out/*/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Formatos Soporte — última versión" \
+            --notes "Apps sin conexión de la Minuta FOR-ASC-14-00-03 y la Prueba a pie de máquina FOR-DID-01-03-03. Android: Formatos-Soporte-Android.apk. Windows: Portable (sin instalar) o Instalador."
